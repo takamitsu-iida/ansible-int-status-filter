@@ -71,7 +71,7 @@ until: down not in r.stdout | map('regex_replace', '.* line protocol is (.*)', '
 
 `['up', 'up', 'up', 'up']` のような配列だと `is all` で判定できませんので、'up'なら'True'、'down'なら'False'に置き換えます。それをbool値に変えて、最後に `is all` で判定する方法です。
 
-カオスな条件式です。
+同じようなreplace処理を2回やっているのが美しくありません。
 
 ```yml
 until: r.stdout | map('replace', 'up', true) | map('replace', 'down', false) | map('bool') | list is all
@@ -81,7 +81,7 @@ until: r.stdout | map('replace', 'up', true) | map('replace', 'down', false) | m
 
 # 自分でフィルタを作った場合
 
-コマンドの応答の配列を受け取って、条件を満たせばTrue、満たさなければFalseを返すフィルタを作ってしまえば、until式はここまで簡単にできます。
+コマンドの応答の配列を受け取って、条件を満たせばTrue、満たさなければFalseを返すフィルタを作ってしまえば、until式は簡単にできます。
 
 `intf_status` は自作のフィルタです。
 
@@ -108,6 +108,7 @@ filter_plugins = ./plugins/filter
 
 プレイブック全体はこのようになります。
 ios_commandモジュールを使って cmds 配列のコマンドを打ち込みます。
+結果を`intf_status`フィルタで判定します。
 
 ```yml
 ---
@@ -180,7 +181,7 @@ r1                         : ok=2    changed=0    unreachable=0    failed=0
 iida-macbook-pro:ansible-int-status-filter iida$
 ```
 
-別のターミナルからSSHでルータに乗り込み、手作業で以下のコマンドを打ち込みました。
+プレイブックを実行した後、別のターミナルからSSHでルータに乗り込んで手作業で以下のコマンドを打ち込みました。
 
 ```none
 csr#show int | inc line protocol
@@ -262,3 +263,4 @@ class FilterModule(object):
 ```
 
 line protocol is の後が **up** ならTrue、それ以外はFalseを格納した配列を作り、最後にall()で判定しています。
+
