@@ -1,0 +1,51 @@
+---
+#
+# Ciscoルータのインタフェースの状態を確認して全てupになるまで待機します
+#
+# 2018/07/15 初版
+#
+# Takamitsu IIDA (@takamitsu-iida)
+
+- name: インタフェースの状態がupするまで待機します
+  hosts: r1  # 11f_routers
+  gather_facts: False
+  strategy: linear  # free
+  serial: 0
+
+  vars:
+    cmds:
+      - show interface GigabitEthernet1 | inc line protocol is
+      - show interface GigabitEthernet2 | inc line protocol is
+      - show interface GigabitEthernet3 | inc line protocol is
+      - show interface GigabitEthernet4 | inc line protocol is
+
+
+  tasks:
+
+    - name: インタフェースが全てupしているか確認
+      ios_command:
+        commands: "{{ cmds }}"
+      register: r
+
+      # チカラ技でuntil式を評価する場合・その１
+      # until: (r.stdout | map('regex_replace', '.* line protocol is (.*)', '\\1') | join(' ')).find('down') == -1
+
+      # チカラ技でuntil式を評価する場合・その２
+      # downは文字列ではなく変数であることに注意。事前にvarsで定義しておくこと。
+      # until: down not in r.stdout | map('regex_replace', '.* line protocol is (.*)', '\\1') | list
+
+      # チカラ技でuntil式を評価する・その３
+      # until: r.stdout | map('replace', 'up', true) | map('replace', 'down', false) | map('bool') | list is all
+
+      # 独自フィルタを使う場合
+      until: r.stdout | intf_status
+
+      # リトライ回数
+      retries: 100
+
+      # 秒間隔
+      delay: 10
+
+    - name: 結果表示
+      when: r is success
+      debug: msg="全てのインタフェースがupになっていることを確認しました"
